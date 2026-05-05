@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>查询与统计</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', 'PingFang SC', Roboto, sans-serif; background: #f0f4f8; color: #333; }
+        nav { background: #2c3e50; padding: 15px 30px; display: flex; gap: 20px; flex-wrap: wrap; }
+        nav a { color: #ecf0f1; text-decoration: none; font-size: 16px; padding: 5px 10px; border-radius: 4px; transition: background 0.3s; }
+        nav a:hover { background: #34495e; }
+        .container { max-width: 1000px; margin: 30px auto; padding: 20px; }
+        h1, h2 { color: #2c3e50; margin: 20px 0 10px; }
+        .card { background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .form-row { display: flex; gap: 10px; align-items: center; margin-bottom: 15px; flex-wrap: wrap; }
+        .form-row input, .form-row select { padding: 8px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
+        .btn { background: #3498db; color: white; border: none; padding: 8px 20px; border-radius: 5px; cursor: pointer; font-size: 14px; transition: background 0.3s; }
+        .btn:hover { background: #2980b9; }
+        .btn-outline { background: white; color: #3498db; border: 2px solid #3498db; }
+        .btn-outline:hover { background: #f0f8ff; }
+        table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+        th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
+        th { background: #ecf0f1; }
+        .stat-box { background: #3498db; color: white; padding: 15px; border-radius: 8px; margin: 10px 0; display: inline-block; min-width: 200px; margin-right: 10px; }
+        .badge { background: #2ecc71; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.85rem; }
+        .badge-red { background: #e74c3c; }
+        .results { margin-top: 20px; }
+        .no-data { color: #7f8c8d; font-style: italic; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="/">🏠 首页</a>
+        <a href="/users">👥 用户</a>
+        <a href="/items">📦 商品</a>
+        <a href="/orders">📋 订单</a>
+        <a href="/queries" style="background:#34495e;">🔍 查询</a>
+    </nav>
+    <div class="container">
+        <h1>📊 数据查询与统计</h1>
+
+        <!-- 基本查询表单 -->
+        <div class="card">
+            <h2>🔍 基本查询</h2>
+            <div class="form-row">
+                <form action="/queries" method="get" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <input type="hidden" name="action" value="unsold">
+                    <button type="submit" class="btn">查看所有未售出商品</button>
+                </form>
+            </div>
+            <div class="form-row">
+                <form action="/queries" method="get" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <input type="hidden" name="action" value="price_gt">
+                    <label>价格大于：</label>
+                    <input type="number" step="0.01" name="min_price" placeholder="例如 30" value="{{ min_price }}">
+                    <button type="submit" class="btn">查询</button>
+                </form>
+            </div>
+            <div class="form-row">
+                <form action="/queries" method="get" style="display: flex; gap: 10px; align-items: center;">
+                    <input type="hidden" name="action" value="daily_goods">
+                    <button type="submit" class="btn">查询生活用品类商品</button>
+                </form>
+            </div>
+            <div class="form-row">
+                <form action="/queries" method="get" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <input type="hidden" name="action" value="user_items">
+                    <label>卖家ID：</label>
+                    <input type="text" name="seller_id" placeholder="例如 u001" value="{{ seller_id }}">
+                    <button type="submit" class="btn">查询该卖家商品</button>
+                </form>
+            </div>
+
+            <!-- 基本查询结果显示 -->
+            <div class="results">
+                {% if action == 'unsold' %}
+                    <h3>未售出商品（{{ unsold_items|length }} 件）</h3>
+                    {% if unsold_items %}
+                    <table><tr><th>ID</th><th>名称</th><th>类别</th><th>价格</th><th>卖家</th></tr>
+                    {% for item in unsold_items %}
+                    <tr><td>{{ item.item_id }}</td><td>{{ item.item_name }}</td><td>{{ item.category }}</td><td>¥{{ item.price }}</td><td>{{ item.seller_id }}</td></tr>
+                    {% endfor %}</table>
+                    {% else %}<p class="no-data">没有未售出商品</p>{% endif %}
+                {% elif action == 'price_gt' and min_price %}
+                    <h3>价格大于 {{ min_price }} 的商品（{{ price_gt|length }} 件）</h3>
+                    {% if price_gt %}
+                    <table><tr><th>ID</th><th>名称</th><th>价格</th></tr>
+                    {% for item in price_gt %}
+                    <tr><td>{{ item.item_id }}</td><td>{{ item.item_name }}</td><td>¥{{ item.price }}</td></tr>
+                    {% endfor %}</table>
+                    {% else %}<p class="no-data">没有符合条件的商品</p>{% endif %}
+                {% elif action == 'daily_goods' %}
+                    <h3>生活用品类商品（{{ daily_goods|length }} 件）</h3>
+                    {% if daily_goods %}
+                    <table><tr><th>ID</th><th>名称</th><th>价格</th></tr>
+                    {% for item in daily_goods %}
+                    <tr><td>{{ item.item_id }}</td><td>{{ item.item_name }}</td><td>¥{{ item.price }}</td></tr>
+                    {% endfor %}</table>
+                    {% else %}<p class="no-data">暂无生活用品</p>{% endif %}
+                {% elif action == 'user_items' and seller_id %}
+                    <h3>{{ seller_id }} 发布的商品（{{ user_items|length }} 件）</h3>
+                    {% if user_items %}
+                    <table><tr><th>ID</th><th>名称</th><th>类别</th><th>价格</th><th>状态</th></tr>
+                    {% for item in user_items %}
+                    <tr><td>{{ item.item_id }}</td><td>{{ item.item_name }}</td><td>{{ item.category }}</td><td>¥{{ item.price }}</td>
+                    <td><span class="badge {% if item.status==1 %}badge-red{% endif %}">{{ '已售' if item.status==1 else '在售' }}</span></td></tr>
+                    {% endfor %}</table>
+                    {% else %}<p class="no-data">该卖家暂无商品</p>{% endif %}
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 连接查询表单 -->
+        <div class="card">
+            <h2>🔗 连接查询</h2>
+            <div class="form-row">
+                <form action="/queries" method="get">
+                    <input type="hidden" name="action" value="sold_info">
+                    <button type="submit" class="btn">已售商品及买家姓名</button>
+                </form>
+                <form action="/queries" method="get">
+                    <input type="hidden" name="action" value="order_detail">
+                    <button type="submit" class="btn btn-outline">查看所有订单详情</button>
+                </form>
+                <form action="/queries" method="get">
+                    <input type="hidden" name="action" value="u001_sold_status">
+                    <button type="submit" class="btn btn-outline">u001 商品购买状态</button>
+                </form>
+            </div>
+
+            <!-- 连接查询结果 -->
+            <div class="results">
+                {% if action == 'sold_info' %}
+                    <h3>已售商品及买家</h3>
+                    {% if sold_with_buyer %}
+                    <table><tr><th>商品名</th><th>买家</th></tr>
+                    {% for row in sold_with_buyer %}
+                    <tr><td>{{ row.item_name }}</td><td>{{ row.user_name }}</td></tr>
+                    {% endfor %}</table>
+                    {% else %}<p class="no-data">暂无已售商品</p>{% endif %}
+                {% elif action == 'order_detail' %}
+                    <h3>订单详情</h3>
+                    {% if order_details %}
+                    <table><tr><th>商品名</th><th>买家</th><th>日期</th></tr>
+                    {% for row in order_details %}
+                    <tr><td>{{ row.item_name }}</td><td>{{ row.buyer_name }}</td><td>{{ row.order_date }}</td></tr>
+                    {% endfor %}</table>
+                    {% else %}<p class="no-data">暂无订单</p>{% endif %}
+                {% elif action == 'u001_sold_status' %}
+                    <h3>u001 商品状态</h3>
+                    {% if u001_sold %}
+                    <table><tr><th>商品名</th><th>状态</th></tr>
+                    {% for row in u001_sold %}
+                    <tr><td>{{ row.item_name }}</td><td><span class="badge">{{ row.status }}</span></td></tr>
+                    {% endfor %}</table>
+                    {% else %}<p class="no-data">该卖家无商品</p>{% endif %}
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 聚合统计（始终显示） -->
+        <div class="card">
+            <h2>📈 聚合统计</h2>
+            <div class="stat-box">📌 商品总数：<strong>{{ total_items }}</strong></div>
+            <div class="stat-box">💰 平均价格：<strong>¥{{ avg_price }}</strong></div>
+            <h3 style="margin-top:15px;">📦 每类商品数量</h3>
+            <ul>
+            {% for c in category_count %}
+                <li><strong>{{ c.category }}</strong>：{{ c.cnt }} 件</li>
+            {% endfor %}
+            </ul>
+            <div class="stat-box" style="background:#e67e22;">👑 最多发布用户：
+                <strong>
+                {% if most_items_user %}
+                    {{ most_items_user.user_name }} ({{ most_items_user.seller_id }})
+                {% else %}无{% endif %}
+                </strong>（{{ most_items_user.cnt if most_items_user else 0 }}件）
+            </div>
+        </div>
+
+        <!-- 视图（始终显示） -->
+        <div class="card">
+            <h2>👁️ 数据库视图</h2>
+            <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                <div style="flex:1; min-width:300px;">
+                    <h3>已售商品视图</h3>
+                    {% if sold_view %}
+                    <table><tr><th>商品名</th><th>买家ID</th></tr>
+                    {% for v in sold_view %}
+                    <tr><td>{{ v.item_name }}</td><td>{{ v.buyer_id }}</td></tr>
+                    {% endfor %}</table>
+                    {% else %}<p class="no-data">暂无</p>{% endif %}
+                </div>
+                <div style="flex:1; min-width:300px;">
+                    <h3>未售商品视图</h3>
+                    {% if unsold_view %}
+                    <table><tr><th>商品名</th><th>类别</th><th>价格</th></tr>
+                    {% for v in unsold_view %}
+                    <tr><td>{{ v.item_name }}</td><td>{{ v.category }}</td><td>¥{{ v.price }}</td></tr>
+                    {% endfor %}</table>
+                    {% else %}<p class="no-data">暂无</p>{% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
