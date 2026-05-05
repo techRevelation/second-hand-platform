@@ -255,8 +255,9 @@ def delete_item():
 
 # ───────────────── 启动 ─────────────────
 if __name__ == '__main__':
-    # 首次运行时自动初始化数据库
+    import os
     if not os.path.exists('second_hand.db'):
         from init_db import init_database
         init_database()
-    app.run(debug=True)
+    port = int(os.environ.get('PORT', 10000))
+    app.run(host='0.0.0.0', port=port, debug=False)
